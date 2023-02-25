@@ -1,0 +1,19 @@
+[Unit]
+Description=Ouverture de la porte vitree
+After=network-online.target
+
+[Service]
+Type=simple
+
+User=root
+Group=root
+
+ExecStart=python3 <PATH TO PROJECT>/main.py
+WorkingDirectory=<PATH TO PROJECT>
+Restart=on-failure
+
+# Configures the time to wait before service is stopped forcefully.
+TimeoutStopSec=300
+
+[Install]
+WantedBy=multi-user.target

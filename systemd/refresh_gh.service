@@ -1,0 +1,8 @@
+[Unit]
+Description=Mise à jour de la liste des GHs
+ConditionACPower=true
+After=network.target network-online.target systemd-networkd.service NetworkManager.service connman.service
+
+[Service]
+Type=oneshot
+ExecStart=<PATH TO PROJECT>/main.py refresh
