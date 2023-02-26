@@ -118,6 +118,9 @@ def refresh():
         DB.drop_tables()
         for code_barre in r.json():
             DB.insert({"code_barre": code_barre})
+        logging.info("La liste des GH est à jour")
+    else:
+        logging.error(f"Erreur {r.status_code}: {r.text}")
 
 
 if __name__ == "__main__":
