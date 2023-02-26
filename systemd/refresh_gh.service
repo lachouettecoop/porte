@@ -5,4 +5,5 @@ After=network.target network-online.target systemd-networkd.service NetworkManag
 
 [Service]
 Type=oneshot
-ExecStart=<PATH TO PROJECT>/main.py refresh
+ExecStart=python3 <PATH TO PROJECT>/main.py refresh
+WorkingDirectory=<PATH TO PROJECT>

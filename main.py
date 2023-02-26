@@ -51,11 +51,11 @@ def check_device(d):
 
 def is_gh(code_barre):
     if code_barre in CONFIG.get("default_gh_list", []):
-        logging.info(f"{code_barre} in default list")
+        logging.info(f"{code_barre} is in default list")
         return True
     gh = DB.get(where("code_barre") == code_barre)
     if gh:
-        logging.info(f"{gh.get('name')} ({code_barre}) is a GH")
+        logging.info(f"{code_barre} is a GH")
         return True
     logging.warning(f"{code_barre} is not a GH")
     return False
