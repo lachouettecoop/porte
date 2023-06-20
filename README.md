@@ -10,6 +10,9 @@ default_gh_list:  # Liste des codes barres par default
 
 sentry:           # Configuration du DSN sentry
   dsn: "https://foo.bar"
+
+push_test_urls:
+  - https://push.statuscake.com/...
 ```
 `python main.py` pour lancer la boucle de lecture/ouverture
 

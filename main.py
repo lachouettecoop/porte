@@ -1,6 +1,7 @@
 import logging
 import sys
 import time
+import threading
 from logging.handlers import RotatingFileHandler
 
 import requests
@@ -16,6 +17,7 @@ SCANNETTES = [
     "0003:0C2E:0200",
     "0003:05E0:1200",
 ]
+PUSH_TEST_SLEEP = 60
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -123,8 +125,22 @@ def refresh():
         logging.error(f"Erreur {r.status_code}: {r.text}")
 
 
+def push_test():
+    while True:
+        for push_test_url in CONFIG.get("push_test_urls", []):
+            requests.get(push_test_url)
+        time.sleep(PUSH_TEST_SLEEP)
+
+
 if __name__ == "__main__":
     if len(sys.argv) <= 1 or sys.argv[1] == "scan":
-        scanette()
+        t1 = threading.Thread(target=scanette)
+        t2 = threading.Thread(target=push_test)
+
+        t1.start()
+        t2.start()
+
+        t1.join()
+        t2.join()
     elif sys.argv[1] == "refresh":
         refresh()
