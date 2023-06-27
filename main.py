@@ -127,9 +127,12 @@ def refresh():
 
 def push_test():
     while True:
-        for push_test_url in CONFIG.get("push_test_urls", []):
-            requests.get(push_test_url)
-        time.sleep(PUSH_TEST_SLEEP)
+        try:
+            for push_test_url in CONFIG.get("push_test_urls", []):
+                requests.get(push_test_url)
+            time.sleep(PUSH_TEST_SLEEP)
+        except Exception as e:
+            logging.error(f"Erreur : {e}")
 
 
 if __name__ == "__main__":
