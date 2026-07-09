@@ -1,4 +1,4 @@
-from porte.config import CONFIG
+from porte.config import CONFIG as CONFIG
 
 
 class UnknownDevice(Exception):

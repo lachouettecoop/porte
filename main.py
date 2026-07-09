@@ -1,7 +1,7 @@
 import logging
 import sys
-import time
 import threading
+import time
 from logging.handlers import RotatingFileHandler
 
 import requests
@@ -86,29 +86,28 @@ def scanette():
 
     try:
         # attention le CHANNEL_NB peut changer a certains moments
-        fp = open(location, "rb")
-        while True:
-            v = ""
-            done = False
-            while not done:
-                buffer = fp.read(8)
-                for c in buffer:
-                    if int(c) == 40:
-                        done = True
-                        break
-                    if int(c) > 28:
-                        if int(HID[int(c)]) >= 0:
+        with open(location, "rb") as fp:
+            while True:
+                v = ""
+                done = False
+                while not done:
+                    buffer = fp.read(8)
+                    for c in buffer:
+                        if int(c) == 40:
+                            done = True
+                            break
+                        if int(c) > 28 and int(HID[int(c)]) >= 0:
                             v = v + HID[int(c)]
 
-            if is_gh(v):
-                GPIO.setmode(GPIO.BCM)
-                GPIO.setup(CHANNEL_NB, GPIO.OUT)
-                logging.info("Nouvelle ouverture " + str(v))
-                GPIO.output(CHANNEL_NB, GPIO.HIGH)  # Turn motor on
-                time.sleep(1)
-                GPIO.output(CHANNEL_NB, GPIO.LOW)  # Turn motor off
-                time.sleep(1)
-                GPIO.cleanup()
+                if is_gh(v):
+                    GPIO.setmode(GPIO.BCM)
+                    GPIO.setup(CHANNEL_NB, GPIO.OUT)
+                    logging.info("Nouvelle ouverture " + str(v))
+                    GPIO.output(CHANNEL_NB, GPIO.HIGH)  # Turn motor on
+                    time.sleep(1)
+                    GPIO.output(CHANNEL_NB, GPIO.LOW)  # Turn motor off
+                    time.sleep(1)
+                    GPIO.cleanup()
     except KeyboardInterrupt:
         GPIO.cleanup()
 

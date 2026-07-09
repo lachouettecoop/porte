@@ -14,23 +14,19 @@ sentry:           # Configuration du DSN sentry
 push_test_urls:
   - https://push.statuscake.com/...
 ```
-`python main.py` pour lancer la boucle de lecture/ouverture
+`uv run main.py` pour lancer la boucle de lecture/ouverture
 
-`python main.py refresh` pour mettre à jour la liste des GHs
+`uv run main.py refresh` pour mettre à jour la liste des GHs
 
 ### Installation
 ```shell
-pip install poetry
-poetry export --without-hashes --format=requirements.txt > requirements.txt
-pip install -r requirements.txt
+make prod
 ```
+`make prod` crée le `.venv` in-project et installe les dépendances depuis `uv.lock`.
+
 Puis declarer deux services et un timer dans systemd. Ils sont dans le répertoire `./systemd`.
 
 ### Développement
 ```shell
-pyenv install 3.7.16
-pyenv global 3.7.16
-pip install poetry
-poetry install
-pre-commit install-hooks
+make dev
 ```
