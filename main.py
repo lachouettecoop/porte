@@ -1,5 +1,7 @@
 import logging
+import os
 import sys
+import tempfile
 import threading
 import time
 from logging.handlers import RotatingFileHandler
@@ -12,12 +14,13 @@ from porte import CONFIG, HID, UnknownDevice
 
 ADMIN_CHOUETTOS_URL = "https://adminchouettos.lachouettecoop.fr/api/export/gh"
 CHANNEL_NB = 21
-DB = TinyDB("synchro-gh.json")
+DB_FILE = "synchro-gh.json"
 SCANNETTES = [
     "0003:0C2E:0200",
     "0003:05E0:1200",
 ]
 PUSH_TEST_SLEEP = 60
+REQUEST_TIMEOUT = 10
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -55,7 +58,8 @@ def is_gh(code_barre):
     if code_barre in CONFIG.get("default_gh_list", []):
         logging.info(f"{code_barre} is in default list")
         return True
-    gh = DB.get(where("code_barre") == code_barre)
+    with TinyDB(DB_FILE) as db:
+        gh = db.get(where("code_barre") == code_barre)
     if gh:
         logging.info(f"{code_barre} is a GH")
         return True
@@ -93,11 +97,12 @@ def scanette():
                 while not done:
                     buffer = fp.read(8)
                     for c in buffer:
-                        if int(c) == 40:
+                        code = int(c)
+                        if code == 40:
                             done = True
                             break
-                        if int(c) > 28 and int(HID[int(c)]) >= 0:
-                            v = v + HID[int(c)]
+                        if code in HID:
+                            v = v + HID[code]
 
                 if is_gh(v):
                     GPIO.setmode(GPIO.BCM)
@@ -113,36 +118,41 @@ def scanette():
 
 
 def refresh():
-    r = requests.get(ADMIN_CHOUETTOS_URL)
+    r = requests.get(ADMIN_CHOUETTOS_URL, timeout=REQUEST_TIMEOUT)
 
-    if r.status_code == 200:
-        DB.drop_tables()
-        for code_barre in r.json():
-            DB.insert({"code_barre": code_barre})
-        logging.info("La liste des GH est à jour")
-    else:
+    if r.status_code != 200:
         logging.error(f"Erreur {r.status_code}: {r.text}")
+        return
+
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=".", suffix=".json")
+    os.close(tmp_fd)
+    with TinyDB(tmp_path) as db:
+        db.insert_multiple({"code_barre": code_barre} for code_barre in r.json())
+    os.replace(tmp_path, DB_FILE)
+    logging.info("La liste des GH est à jour")
 
 
 def push_test():
     while True:
         try:
             for push_test_url in CONFIG.get("push_test_urls", []):
-                requests.get(push_test_url)
-            time.sleep(PUSH_TEST_SLEEP)
+                requests.get(push_test_url, timeout=REQUEST_TIMEOUT)
         except Exception as e:
             logging.error(f"Erreur : {e}")
+        finally:
+            time.sleep(PUSH_TEST_SLEEP)
 
 
 if __name__ == "__main__":
     if len(sys.argv) <= 1 or sys.argv[1] == "scan":
-        t1 = threading.Thread(target=scanette)
-        t2 = threading.Thread(target=push_test)
+        push_thread = threading.Thread(target=push_test, daemon=True)
+        push_thread.start()
 
-        t1.start()
-        t2.start()
-
-        t1.join()
-        t2.join()
+        try:
+            scanette()
+        except Exception:
+            logging.exception("Erreur fatale du lecteur de scanette")
+            sentry_sdk.capture_exception()
+            sys.exit(1)
     elif sys.argv[1] == "refresh":
         refresh()
