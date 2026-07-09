@@ -2,21 +2,11 @@ ASDF_VERSION := v0.20.0
 
 ensure-asdf:
 	@if ! command -v asdf >/dev/null 2>&1; then \
-		echo "asdf is not installed. Detecting architecture..."; \
-		MACHINE="$$(uname -m)"; \
-		case "$$MACHINE" in \
-			x86_64|amd64) ASDF_ARCH="amd64" ;; \
-			i386|i686) ASDF_ARCH="386" ;; \
-			aarch64|arm64) ASDF_ARCH="arm64" ;; \
-			armv7l|armv6l|arm) echo "No prebuilt asdf $(ASDF_VERSION) archive for 32-bit ARM ($$MACHINE)."; exit 1 ;; \
-			*) echo "Unsupported architecture: $$MACHINE"; exit 1 ;; \
-		esac; \
-		ARCHIVE="asdf-$(ASDF_VERSION)-linux-$$ASDF_ARCH.tar.gz"; \
-		echo "Installing asdf for linux-$$ASDF_ARCH..."; \
-		wget "https://github.com/asdf-vm/asdf/releases/download/$(ASDF_VERSION)/$$ARCHIVE"; \
-		tar -xzf "$$ARCHIVE"; \
+		echo "asdf is not installed. Installing asdf..."; \
+		wget "https://github.com/asdf-vm/asdf/releases/download/$(ASDF_VERSION)/asdf-$(ASDF_VERSION)-linux-amd64.tar.gz"; \
+		tar -xzf asdf-$(ASDF_VERSION)-linux-amd64.tar.gz; \
 		mv ./asdf ~/.local/bin/; \
-		rm "$$ARCHIVE"; \
+		rm asdf-$(ASDF_VERSION)-linux-amd64.tar.gz; \
 	else \
 		echo "asdf is already installed."; \
 	fi

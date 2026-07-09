@@ -8,7 +8,7 @@ Type=simple
 User=root
 Group=root
 
-ExecStart=uv run <PATH TO PROJECT>/main.py
+ExecStart=python3 <PATH TO PROJECT>/main.py
 WorkingDirectory=<PATH TO PROJECT>
 Restart=on-failure
 
