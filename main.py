@@ -2,7 +2,6 @@ import logging
 import os
 import sys
 import tempfile
-import threading
 import time
 from logging.handlers import RotatingFileHandler
 
@@ -132,27 +131,14 @@ def refresh():
     logging.info("La liste des GH est à jour")
 
 
-def push_test():
-    while True:
-        try:
-            for push_test_url in CONFIG.get("push_test_urls", []):
-                requests.get(push_test_url, timeout=REQUEST_TIMEOUT)
-        except Exception as e:
-            logging.error(f"Erreur : {e}")
-        finally:
-            time.sleep(PUSH_TEST_SLEEP)
-
-
 if __name__ == "__main__":
     if len(sys.argv) <= 1 or sys.argv[1] == "scan":
-        push_thread = threading.Thread(target=push_test, daemon=True)
-        push_thread.start()
-
         try:
             scanette()
-        except Exception:
-            logging.exception("Erreur fatale du lecteur de scanette")
+        except Exception as e:
+            logging.exception(f"Erreur fatale du lecteur de scanette : {e}")
             sentry_sdk.capture_exception()
-            sys.exit(1)
+        logging.error("scanette() s'est terminée de manière inattendue")
+        sys.exit(1)
     elif sys.argv[1] == "refresh":
         refresh()
