@@ -1,0 +1,9 @@
+[Unit]
+Description=Push StatusCake if porte is up
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecCondition=/usr/bin/systemctl is-active --quiet portevitree.service
+ExecStart=/usr/bin/curl -fsS --max-time 10 "https://push.statuscake.com/?PK=xxxx&TestID=xxxx&time=0"

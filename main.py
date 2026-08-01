@@ -1,7 +1,8 @@
 import logging
+import os
 import sys
+import tempfile
 import time
-import threading
 from logging.handlers import RotatingFileHandler
 
 import requests
@@ -12,12 +13,13 @@ from porte import CONFIG, HID, UnknownDevice
 
 ADMIN_CHOUETTOS_URL = "https://adminchouettos.lachouettecoop.fr/api/export/gh"
 CHANNEL_NB = 21
-DB = TinyDB("synchro-gh.json")
+DB_FILE = "synchro-gh.json"
 SCANNETTES = [
     "0003:0C2E:0200",
     "0003:05E0:1200",
 ]
 PUSH_TEST_SLEEP = 60
+REQUEST_TIMEOUT = 10
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -55,7 +57,8 @@ def is_gh(code_barre):
     if code_barre in CONFIG.get("default_gh_list", []):
         logging.info(f"{code_barre} is in default list")
         return True
-    gh = DB.get(where("code_barre") == code_barre)
+    with TinyDB(DB_FILE) as db:
+        gh = db.get(where("code_barre") == code_barre)
     if gh:
         logging.info(f"{code_barre} is a GH")
         return True
@@ -86,64 +89,56 @@ def scanette():
 
     try:
         # attention le CHANNEL_NB peut changer a certains moments
-        fp = open(location, "rb")
-        while True:
-            v = ""
-            done = False
-            while not done:
-                buffer = fp.read(8)
-                for c in buffer:
-                    if int(c) == 40:
-                        done = True
-                        break
-                    if int(c) > 28:
-                        if int(HID[int(c)]) >= 0:
-                            v = v + HID[int(c)]
+        with open(location, "rb") as fp:
+            while True:
+                v = ""
+                done = False
+                while not done:
+                    buffer = fp.read(8)
+                    for c in buffer:
+                        code = int(c)
+                        if code == 40:
+                            done = True
+                            break
+                        if code in HID:
+                            v = v + HID[code]
 
-            if is_gh(v):
-                GPIO.setmode(GPIO.BCM)
-                GPIO.setup(CHANNEL_NB, GPIO.OUT)
-                logging.info("Nouvelle ouverture " + str(v))
-                GPIO.output(CHANNEL_NB, GPIO.HIGH)  # Turn motor on
-                time.sleep(1)
-                GPIO.output(CHANNEL_NB, GPIO.LOW)  # Turn motor off
-                time.sleep(1)
-                GPIO.cleanup()
+                if is_gh(v):
+                    GPIO.setmode(GPIO.BCM)
+                    GPIO.setup(CHANNEL_NB, GPIO.OUT)
+                    logging.info("Nouvelle ouverture " + str(v))
+                    GPIO.output(CHANNEL_NB, GPIO.HIGH)  # Turn motor on
+                    time.sleep(1)
+                    GPIO.output(CHANNEL_NB, GPIO.LOW)  # Turn motor off
+                    time.sleep(1)
+                    GPIO.cleanup()
     except KeyboardInterrupt:
         GPIO.cleanup()
 
 
 def refresh():
-    r = requests.get(ADMIN_CHOUETTOS_URL)
+    r = requests.get(ADMIN_CHOUETTOS_URL, timeout=REQUEST_TIMEOUT)
 
-    if r.status_code == 200:
-        DB.drop_tables()
-        for code_barre in r.json():
-            DB.insert({"code_barre": code_barre})
-        logging.info("La liste des GH est à jour")
-    else:
+    if r.status_code != 200:
         logging.error(f"Erreur {r.status_code}: {r.text}")
+        return
 
-
-def push_test():
-    while True:
-        try:
-            for push_test_url in CONFIG.get("push_test_urls", []):
-                requests.get(push_test_url)
-            time.sleep(PUSH_TEST_SLEEP)
-        except Exception as e:
-            logging.error(f"Erreur : {e}")
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=".", suffix=".json")
+    os.close(tmp_fd)
+    with TinyDB(tmp_path) as db:
+        db.insert_multiple({"code_barre": code_barre} for code_barre in r.json())
+    os.replace(tmp_path, DB_FILE)
+    logging.info("La liste des GH est à jour")
 
 
 if __name__ == "__main__":
     if len(sys.argv) <= 1 or sys.argv[1] == "scan":
-        t1 = threading.Thread(target=scanette)
-        t2 = threading.Thread(target=push_test)
-
-        t1.start()
-        t2.start()
-
-        t1.join()
-        t2.join()
+        try:
+            scanette()
+        except Exception as e:
+            logging.exception(f"Erreur fatale du lecteur de scanette : {e}")
+            sentry_sdk.capture_exception()
+        logging.error("scanette() s'est terminée de manière inattendue")
+        sys.exit(1)
     elif sys.argv[1] == "refresh":
         refresh()
