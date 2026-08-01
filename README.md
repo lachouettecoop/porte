@@ -24,6 +24,9 @@ pip install -r requirements.txt
 ```
 Puis declarer deux services et un timer dans systemd. Ils sont dans le répertoire `./systemd`.
 
+### StatusCake
+Dans le repertoire systemd, le service statuscake-push sert à verifier le statis du service portevitree et notifier via push statuscake.
+
 ### Développement
 ```shell
 make dev
